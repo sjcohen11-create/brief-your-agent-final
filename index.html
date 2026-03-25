@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brief Your Agent — Airtable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#FFFFFF; --navy-mid:#F7F8FC; --navy-card:#FFFFFF;
+  --blue:#1F6FEB; --blue-dim:rgba(31,111,235,0.08);
+  --teal:#00A98F; --teal-dim:rgba(0,169,143,0.08);
+  --yellow:#F5A623; --yellow-dim:rgba(245,166,35,0.1);
+  --white:#111827; --muted:#6B7280; --muted-light:#9CA3AF;
+  --border:rgba(0,0,0,0.08); --border-lit:rgba(0,169,143,0.3);
+  --grad:linear-gradient(135deg,#1F6FEB 0%,#00A98F 100%);
+  --grad-warm:linear-gradient(135deg,#F5A623 0%,#EF6C00 100%);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:#F7F8FC;color:#111827;min-height:100vh;overflow-x:hidden}
+body::after{display:none}
+.glow{position:fixed;border-radius:50%;filter:blur(140px);pointer-events:none;z-index:0}
+.glow-1{width:700px;height:700px;background:radial-gradient(circle,rgba(43,127,224,0.09) 0%,transparent 70%);top:-250px;left:-200px}
+.glow-2{width:500px;height:500px;background:radial-gradient(circle,rgba(0,201,167,0.07) 0%,transparent 70%);bottom:-150px;right:-150px}
+.glow-3{width:400px;height:400px;background:radial-gradient(circle,rgba(255,209,102,0.05) 0%,transparent 70%);top:40%;left:40%;transform:translate(-50%,-50%)}
+
+.screen{display:none;min-height:100vh;position:relative;z-index:1;flex-direction:column}
+.screen.active{display:flex}
+
+.topbar{padding:20px 36px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(0,0,0,0.06);background:#FFFFFF;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:10px;font-family:'Syne',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.03em;color:#111827;opacity:1}
+.logo-cube{width:28px;height:28px;border-radius:7px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:13px}
+.topbar-label{font-size:12px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)}
+
+/* ══ ENTRY ══ */
+#screen-entry{align-items:center;justify-content:center;background:#FFFFFF}
+.entry-wrap{max-width:620px;margin:0 auto;padding:60px 36px;text-align:center}
+.entry-badge{display:inline-flex;align-items:center;gap:8px;background:var(--teal-dim);border:1px solid var(--border-lit);border-radius:100px;padding:7px 18px;font-size:12px;font-weight:600;letter-spacing:0.05em;color:var(--teal);margin-bottom:36px}
+.badge-pulse{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.8)}}
+.entry-title{font-family:'Syne',sans-serif;font-size:clamp(38px,6vw,64px);font-weight:800;line-height:1.05;margin-bottom:20px}
+.grad-text{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.entry-sub{font-size:18px;color:var(--muted-light);line-height:1.65;margin-bottom:44px;font-weight:300}
+.btn-main{display:inline-flex;align-items:center;gap:10px;background:var(--grad);color:var(--navy);font-family:'Syne',sans-serif;font-size:16px;font-weight:700;padding:18px 40px;border-radius:14px;border:none;cursor:pointer;transition:all 0.22s ease;letter-spacing:0.01em}
+.btn-main:hover{transform:translateY(-3px);box-shadow:0 16px 40px rgba(0,201,167,0.22);filter:brightness(1.06)}
+.btn-arrow{transition:transform 0.2s ease;font-size:18px}
+.btn-main:hover .btn-arrow{transform:translateX(5px)}
+.entry-stats{display:flex;align-items:center;justify-content:center;gap:24px;margin-top:28px}
+.entry-stat{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.stat-dot{width:3px;height:3px;border-radius:50%;background:var(--muted)}
+
+/* ══ HANDOFF OVERLAY ══ */
+#handoff-overlay{
+  position:fixed;inset:0;z-index:600;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(247,248,252,0.92);backdrop-filter:blur(16px);
+  opacity:0;pointer-events:none;transition:opacity 0.3s ease;
+}
+#handoff-overlay.show{opacity:1;pointer-events:auto}
+
+.handoff-stage{
+  width:100%;max-width:640px;padding:0 32px;
+  display:flex;flex-direction:column;align-items:center;gap:0;
+}
+
+/* Two-column transfer area */
+.transfer-row{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  gap:16px;margin-bottom:32px;
+}
+
+/* User avatar */
+.user-avatar{
+  display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0;
+}
+.user-ring{
+  width:64px;height:64px;border-radius:50%;
+  border:2px solid rgba(0,0,0,0.12);
+  background:rgba(31,111,235,0.06);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:18px;font-weight:700;
+  color:#6B7280;position:relative;
+}
+.user-ring::before{
+  content:'';position:absolute;inset:-4px;border-radius:50%;
+  border:1px solid rgba(255,255,255,0.08);
+}
+.user-ring.sending{
+  animation:user-send 0.4s ease forwards;
+}
+@keyframes user-send{
+  0%{box-shadow:0 0 0 0 rgba(255,255,255,0.2)}
+  50%{box-shadow:0 0 0 12px rgba(255,255,255,0)}
+  100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}
+}
+.user-label{font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)}
+
+/* Beam */
+.beam-wrap{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;
+}
+.beam-track{
+  width:100%;height:2px;background:rgba(0,0,0,0.08);
+  border-radius:1px;position:relative;overflow:visible;
+}
+.beam-fill{
+  position:absolute;left:0;top:0;bottom:0;
+  background:var(--grad);border-radius:1px;
+  width:0%;transition:width 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+.beam-track::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,transparent,transparent 6px,rgba(0,0,0,0.04) 6px,rgba(0,0,0,0.04) 8px);
+}
+
+/* Flying token */
+.token-fly{
+  position:absolute;top:50%;transform:translateY(-50%);
+  width:42px;height:42px;border-radius:12px;
+  background:#FFFFFF;border:1px solid rgba(0,169,143,0.3);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  font-size:18px;
+  box-shadow:0 4px 20px rgba(0,169,143,0.2),0 2px 8px rgba(0,0,0,0.08);
+  left:0%;
+  transition:left 0.7s cubic-bezier(0.4,0,0.2,1);
+  z-index:2;
+}
+.token-fly.flying{left:calc(100% - 42px)}
+
+.beam-label{
+  font-size:11px;color:var(--muted);font-weight:500;letter-spacing:0.04em;
+  white-space:nowrap;
+}
+
+/* Agent avatar */
+.agent-avatar{
+  display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0;
+}
+.agent-cube{
+  width:64px;height:64px;border-radius:14px;
+  background:linear-gradient(135deg,rgba(31,111,235,0.08),rgba(0,169,143,0.06));
+  border:1px solid rgba(0,169,143,0.25);
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;position:relative;
+  box-shadow:0 2px 12px rgba(0,169,143,0.1);
+}
+.agent-cube::before{
+  content:'';position:absolute;inset:-4px;border-radius:18px;
+  border:1px solid rgba(0,201,167,0.12);
+}
+.agent-cube.receiving{
+  animation:agent-receive 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+@keyframes agent-receive{
+  0%{transform:scale(1)}
+  40%{transform:scale(1.18);box-shadow:0 0 0 8px rgba(0,201,167,0.2),0 0 30px rgba(0,201,167,0.3)}
+  70%{transform:scale(0.96)}
+  100%{transform:scale(1);box-shadow:0 0 0 0 rgba(0,201,167,0)}
+}
+.agent-accept-badge{
+  position:absolute;top:-6px;right:-6px;
+  width:20px;height:20px;border-radius:50%;
+  background:var(--teal);border:2px solid var(--navy);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:var(--navy);
+  opacity:0;transform:scale(0);
+  transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+.agent-cube.accepted .agent-accept-badge{opacity:1;transform:scale(1)}
+.agent-label{font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--teal)}
+
+/* Insight text */
+.handoff-insight{
+  width:100%;background:#FFFFFF;
+  border:1px solid rgba(0,169,143,0.2);border-radius:16px;
+  padding:20px 24px;margin-bottom:24px;
+  position:relative;overflow:hidden;
+  min-height:72px;display:flex;flex-direction:column;justify-content:center;
+  box-shadow:0 4px 24px rgba(0,0,0,0.06);
+}
+.handoff-insight::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad)}
+.insight-tag{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--teal);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.insight-typed{
+  font-family:'Syne',sans-serif;font-size:clamp(15px,2.5vw,18px);
+  font-weight:700;color:var(--white);line-height:1.35;min-height:28px;
+}
+.type-cursor{display:inline-block;width:2px;height:1em;background:var(--teal);margin-left:2px;vertical-align:middle;animation:blink 0.7s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* Capability stack */
+.cap-stack-label{font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;text-align:center}
+.cap-stack-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.cap-chip{
+  display:flex;align-items:center;gap:6px;
+  background:var(--navy-card);border:1px solid var(--border);
+  border-radius:100px;padding:5px 12px;
+  font-size:11px;font-weight:600;color:var(--muted-light);
+  opacity:0;transform:scale(0.7) translateY(8px);
+  transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+.cap-chip.visible{opacity:1;transform:scale(1) translateY(0)}
+.cap-chip.active{border-color:var(--teal);color:var(--teal);background:var(--teal-dim)}
+.cap-chip-icon{font-size:13px}
+
+/* Drain bar */
+.handoff-drain{height:2px;background:var(--border);border-radius:1px;overflow:hidden;margin-top:20px;width:100%}
+.handoff-drain-fill{height:100%;background:var(--grad);animation:drain 2.8s linear forwards}
+@keyframes drain{from{width:100%}to{width:0%}}
+
+/* ══ QUIZ SCREEN ══ */
+#screen-quiz{}
+
+/* Mission map */
+.mission-wrap{padding:18px 36px 0;flex-shrink:0;background:#FFFFFF;border-bottom:1px solid rgba(0,0,0,0.05)}
+.mission-map{display:flex;align-items:center;position:relative;margin-bottom:4px}
+.map-node{
+  width:34px;height:34px;border-radius:50%;border:2px solid rgba(0,0,0,0.1);
+  background:#FFFFFF;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;font-family:'Syne',sans-serif;color:#9CA3AF;
+  flex-shrink:0;transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);position:relative;z-index:2;
+  box-shadow:0 1px 4px rgba(0,0,0,0.06);
+}
+.map-node.done{background:var(--teal-dim);border-color:var(--teal);color:var(--teal);box-shadow:0 0 0 3px rgba(0,201,167,0.1)}
+.map-node.active{background:var(--grad);border-color:transparent;color:var(--navy);box-shadow:0 0 0 5px rgba(0,201,167,0.15),0 0 18px rgba(0,201,167,0.2);transform:scale(1.1)}
+.map-node.spinning{animation:node-spin-lock 0.5s cubic-bezier(0.4,0,0.2,1) forwards}
+@keyframes node-spin-lock{0%{transform:scale(1.1) rotate(0deg)}50%{transform:scale(1.3) rotate(180deg)}100%{transform:scale(1) rotate(360deg)}}
+.map-node.pulsing{animation:node-pulse 0.6s ease forwards}
+@keyframes node-pulse{0%{box-shadow:0 0 0 0 rgba(0,201,167,0.5)}50%{box-shadow:0 0 0 14px rgba(0,201,167,0)}100%{box-shadow:0 0 0 5px rgba(0,201,167,0.15)}}
+.map-node.dest{width:40px;height:40px;font-size:16px;background:var(--yellow-dim);border-color:var(--yellow);color:var(--yellow)}
+.map-node.dest.done{background:var(--grad-warm);border-color:transparent;color:var(--navy);box-shadow:0 0 20px rgba(255,209,102,0.3)}
+.map-track{flex:1;height:2px;background:rgba(0,0,0,0.08);position:relative;overflow:hidden;margin:0 3px}
+.map-track-fill{position:absolute;left:0;top:0;bottom:0;background:var(--teal);width:0%;transition:width 0.7s cubic-bezier(0.4,0,0.2,1)}
+.map-labels{display:flex;align-items:flex-start;margin-top:5px}
+.map-lbl{font-size:9px;color:var(--muted);letter-spacing:0.04em;text-transform:uppercase;text-align:center;font-weight:500;transition:color 0.3s ease;width:34px;flex-shrink:0}
+.map-lbl.active{color:var(--teal)} .map-lbl.done{color:var(--muted-light)}
+.map-sp{flex:1}
+.map-dest-lbl{font-size:9px;color:var(--yellow);letter-spacing:0.04em;text-transform:uppercase;text-align:center;font-weight:600;width:40px;flex-shrink:0}
+
+/* Capability bar (persistent) */
+.cap-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 36px;flex-wrap:wrap;min-height:44px;
+  background:#FAFBFE;border-bottom:1px solid rgba(0,0,0,0.05);
+}
+.cap-bar-label{font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted);margin-right:4px;flex-shrink:0}
+.cap-bar-chip{
+  display:flex;align-items:center;gap:5px;
+  background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);
+  border-radius:100px;padding:4px 10px;
+  font-size:11px;font-weight:600;color:#9CA3AF;
+  opacity:0;transform:translateY(6px) scale(0.85);
+  transition:all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow:0 1px 4px rgba(0,0,0,0.06);
+}
+.cap-bar-chip.visible{opacity:1;transform:translateY(0) scale(1);border-color:rgba(0,169,143,0.3);color:var(--teal);background:rgba(0,169,143,0.06)}
+.cap-bar-icon{font-size:12px}
+.cap-bar-text{font-size:10px}
+
+/* Question */
+.question-wrap{flex:1;display:flex;flex-direction:column;padding:20px 36px 36px;max-width:980px;margin:0 auto;width:100%}
+.q-tag{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--teal);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.q-tag::before{content:'';display:block;width:18px;height:1px;background:var(--teal);opacity:0.5}
+.q-text{font-family:'Syne',sans-serif;font-size:clamp(20px,3vw,32px);font-weight:700;line-height:1.22;margin-bottom:28px;max-width:680px}
+.tiles-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;flex:1}
+.tile{border-radius:18px;border:1px solid rgba(0,0,0,0.07);background:#FFFFFF;overflow:hidden;cursor:pointer;transition:all 0.26s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column;min-height:240px;position:relative;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.tile:hover{border-color:rgba(31,111,235,0.3);transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,0.12)}
+.tile.selected{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal),0 12px 32px rgba(0,169,143,0.15)}
+.tile-img{height:155px;flex-shrink:0;position:relative;overflow:hidden;}
+.tile-img::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0) 40%,rgba(0,0,0,0.2) 100%)}
+.tile-icon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:52px;filter:drop-shadow(0 2px 16px rgba(0,0,0,0.2));opacity:1;z-index:1}
+.tile-body{padding:14px 16px 18px;flex:1;display:flex;flex-direction:column;justify-content:space-between;background:rgba(255,255,255,0.12);backdrop-filter:blur(4px)}
+.tile-text{font-size:14px;font-weight:600;line-height:1.5;color:#111827}
+.tile-check{width:20px;height:20px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.4);margin-top:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.22s ease}
+.tile.selected .tile-check{background:var(--teal);border-color:var(--teal)}
+.tile-check::after{content:'✓';font-size:10px;font-weight:700;color:var(--navy);opacity:0;transition:opacity 0.2s ease}
+.tile.selected .tile-check::after{opacity:1}
+
+/* Photo styles — Unsplash source API, unique seed per tile */
+.p-solo-desk{background:#2D7DD2;background-image:linear-gradient(135deg,#2D7DD2 0%,#2D7DD2CC 100%);}
+.p-layers{background:#00A98F;background-image:linear-gradient(135deg,#00A98F 0%,#00A98FCC 100%);}
+.p-team{background:#F5A623;background-image:linear-gradient(135deg,#F5A623 0%,#F5A623CC 100%);}
+.p-tabs{background:#7B61FF;background-image:linear-gradient(135deg,#7B61FF 0%,#7B61FFCC 100%);}
+.p-updates{background:#2D7DD2;background-image:linear-gradient(135deg,#2D7DD2 0%,#2D7DD2CC 100%);}
+.p-reports{background:#00A98F;background-image:linear-gradient(135deg,#00A98F 0%,#00A98FCC 100%);}
+.p-approval{background:#F5A623;background-image:linear-gradient(135deg,#F5A623 0%,#F5A623CC 100%);}
+.p-handoff{background:#7B61FF;background-image:linear-gradient(135deg,#7B61FF 0%,#7B61FFCC 100%);}
+.p-tools{background:#E8604C;background-image:linear-gradient(135deg,#E8604C 0%,#E8604CCC 100%);}
+.p-repetitive{background:#2D7DD2;background-image:linear-gradient(135deg,#2D7DD2 0%,#2D7DD2CC 100%);}
+.p-connected{background:#00A98F;background-image:linear-gradient(135deg,#00A98F 0%,#00A98FCC 100%);}
+.p-autonomous{background:#F5A623;background-image:linear-gradient(135deg,#F5A623 0%,#F5A623CC 100%);}
+.p-bottleneck{background:#E8604C;background-image:linear-gradient(135deg,#E8604C 0%,#E8604CCC 100%);}
+.p-moving{background:#7B61FF;background-image:linear-gradient(135deg,#7B61FF 0%,#7B61FFCC 100%);}
+.p-ideas{background:#2D7DD2;background-image:linear-gradient(135deg,#2D7DD2 0%,#2D7DD2CC 100%);}
+
+/* ══ LOADING ══ */
+#screen-loading{align-items:center;justify-content:center;background:#FFFFFF}
+.loading-wrap{text-align:center;padding:40px 32px;max-width:500px;margin:0 auto}
+.loading-ring-wrap{width:90px;height:90px;margin:0 auto 36px;position:relative}
+.ring{position:absolute;inset:0;border-radius:50%;border:2px solid transparent;border-top-color:var(--teal);animation:spin 1.1s linear infinite}
+.ring:nth-child(2){inset:10px;border-top-color:var(--blue);animation-duration:1.7s;animation-direction:reverse}
+.ring:nth-child(3){inset:20px;border-top-color:rgba(255,209,102,0.5);animation-duration:2.3s}
+.ring-core{position:absolute;inset:28px;border-radius:50%;background:var(--grad);animation:pulse 2s ease infinite;box-shadow:0 0 20px rgba(31,111,235,0.2)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:14px}
+.loading-step{font-size:15px;color:#6B7280;min-height:26px}
+.loading-dots{display:flex;gap:8px;justify-content:center;margin-top:28px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:dotpulse 1.4s ease infinite}
+.dot:nth-child(2){animation-delay:0.2s}.dot:nth-child(3){animation-delay:0.4s}
+@keyframes dotpulse{0%,100%{opacity:0.3;transform:scale(1)}50%{opacity:1;transform:scale(1.4);background:var(--teal)}}
+
+/* ══ PRE-GATE ══ */
+#screen-pregate{align-items:center}
+.pregate-wrap{max-width:800px;margin:0 auto;padding:32px 36px 60px;width:100%}
+.result-eyebrow{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--teal);margin-bottom:10px}
+.archetype-name{font-family:'Syne',sans-serif;font-size:clamp(36px,5.5vw,62px);font-weight:800;line-height:1.05;margin-bottom:12px}
+.archetype-desc{font-size:17px;color:#374151;line-height:1.65;margin-bottom:28px;max-width:580px;font-weight:300}
+.archetype-banner{height:170px;border-radius:16px;overflow:hidden;margin-bottom:26px;position:relative}
+.archetype-banner::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,12,24,0.7) 0%,transparent 50%,rgba(8,12,24,0.7) 100%)}
+.banner-force{background-image:radial-gradient(ellipse 50% 80% at 20% 50%,rgba(31,111,235,0.25) 0%,transparent 60%),radial-gradient(ellipse 50% 80% at 80% 50%,rgba(0,169,143,0.2) 0%,transparent 60%),linear-gradient(135deg,#EEF4FF 0%,#E6F7F4 50%,#F0F9FF 100%)}
+.banner-allinone{background-image:radial-gradient(ellipse 40% 80% at 15% 50%,rgba(138,43,226,0.15) 0%,transparent 55%),radial-gradient(ellipse 50% 80% at 85% 50%,rgba(31,111,235,0.2) 0%,transparent 55%),linear-gradient(135deg,#F3EEFF 0%,#EEF4FF 50%,#F0F4FF 100%)}
+.banner-shipit{background-image:radial-gradient(ellipse 50% 80% at 20% 50%,rgba(245,166,35,0.25) 0%,transparent 60%),radial-gradient(ellipse 50% 80% at 80% 50%,rgba(239,108,0,0.2) 0%,transparent 55%),linear-gradient(135deg,#FFF8EE 0%,#FFF3E0 50%,#FFFBF0 100%)}
+.banner-text{position:absolute;inset:0;display:flex;align-items:center;padding:0 32px;z-index:1}
+.banner-quote{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:#1F2937;max-width:500px;line-height:1.4;font-style:italic}
+.time-card{background:linear-gradient(135deg,rgba(31,111,235,0.05) 0%,rgba(0,169,143,0.04) 100%);border:1px solid rgba(0,169,143,0.15);border-radius:16px;padding:26px 28px;margin-bottom:22px;position:relative;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.04)}
+.time-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad)}
+.time-big{font-family:'Syne',sans-serif;font-size:50px;font-weight:800;color:var(--teal);line-height:1;margin-bottom:6px}
+.time-big span{font-size:20px;color:var(--muted-light);font-weight:400}
+.time-desc{font-size:15px;color:var(--muted-light);margin-bottom:12px;line-height:1.5}
+.time-monthly{font-size:13px;color:var(--muted-light);padding-top:12px;border-top:1px solid rgba(255,255,255,0.06)}
+.time-monthly strong{color:var(--white)}
+.kit-section-label{font-size:11px;font-weight:600;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.kit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.kit-preview-card{background:#FFFFFF;border:1px solid rgba(0,0,0,0.07);border-radius:14px;padding:18px;min-height:130px;position:relative;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04)}
+.kit-preview-card.unlocked{border-color:rgba(0,169,143,0.2);background:linear-gradient(135deg,rgba(0,169,143,0.04) 0%,#FFFFFF 100%)}
+.kit-card-tag{font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.kit-card-tag.open{color:var(--teal)}.kit-card-tag.closed{color:var(--muted)}
+.kit-card-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--white);margin-bottom:6px;line-height:1.3}
+.kit-card-body{font-size:12px;color:var(--muted-light);line-height:1.55;margin-bottom:10px}
+.kit-unlock-label{font-size:11px;color:var(--muted);font-style:italic;display:flex;align-items:center;gap:5px;padding-top:8px;border-top:1px solid var(--border)}
+.cta-primary{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--grad);color:var(--navy);font-family:'Syne',sans-serif;font-size:16px;font-weight:700;padding:17px 32px;border-radius:13px;border:none;cursor:pointer;width:100%;letter-spacing:0.01em;transition:all 0.22s ease}
+.cta-primary:hover{transform:translateY(-2px);box-shadow:0 14px 36px rgba(0,201,167,0.22);filter:brightness(1.06)}
+
+/* ══ GATE ══ */
+#screen-gate{align-items:center;justify-content:center;background:#FFFFFF}
+.gate-wrap{max-width:540px;margin:0 auto;padding:40px 36px;width:100%}
+.gate-q-tag{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--teal);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.gate-q-tag::before{content:'';display:block;width:18px;height:1px;background:var(--teal);opacity:0.5}
+.gate-title{font-family:'Syne',sans-serif;font-size:clamp(24px,4vw,34px);font-weight:700;line-height:1.2;margin-bottom:10px}
+.gate-sub{font-size:15px;color:var(--muted-light);margin-bottom:36px;line-height:1.6;font-weight:300}
+.field-group{display:flex;flex-direction:column;gap:16px}
+.field-label{font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:block}
+.field-input{width:100%;background:#FFFFFF;border:1px solid rgba(0,0,0,0.1);border-radius:11px;padding:14px 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#111827;outline:none;transition:all 0.2s ease;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.field-input.prefilled{color:#9CA3AF;border-color:rgba(0,0,0,0.06);background:#FAFAFA}
+.field-input:focus{border-color:var(--teal);background:rgba(0,201,167,0.05);box-shadow:0 0 0 3px rgba(0,201,167,0.1);color:var(--white)}
+.field-input.highlight{border-color:rgba(31,111,235,0.3);background:rgba(31,111,235,0.02)}
+.field-input::placeholder{color:#9CA3AF}
+.privacy{font-size:12px;color:var(--muted);text-align:center;margin-top:4px}
+.gate-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--grad);color:var(--navy);font-family:'Syne',sans-serif;font-size:16px;font-weight:700;padding:17px 32px;border-radius:13px;border:none;cursor:pointer;width:100%;transition:all 0.22s ease;letter-spacing:0.01em}
+.gate-btn:disabled{opacity:0.45;cursor:not-allowed}
+.gate-btn:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 14px 36px rgba(0,201,167,0.22);filter:brightness(1.06)}
+
+/* ══ RESULTS ══ */
+#screen-results{padding-bottom:80px}
+.results-hero{padding:32px 36px 24px;max-width:980px;margin:0 auto;width:100%}
+.results-eyebrow{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--yellow);margin-bottom:10px}
+.results-title{font-family:'Syne',sans-serif;font-size:clamp(26px,4vw,42px);font-weight:800;margin-bottom:10px}
+.results-sub{font-size:16px;color:#374151;line-height:1.65;max-width:560px;margin-bottom:8px;font-weight:300}
+.omni-callout{display:inline-flex;align-items:center;gap:10px;background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.2);border-radius:10px;padding:10px 16px;margin-bottom:32px;font-size:13px;color:#374151;line-height:1.5}
+.omni-callout strong{color:#B45309}
+.workflow-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:0 36px;max-width:980px;margin:0 auto}
+.wf-card{background:#FFFFFF;border:1px solid rgba(0,0,0,0.07);border-radius:18px;overflow:hidden;transition:transform 0.22s ease,box-shadow 0.22s ease;box-shadow:0 2px 12px rgba(0,0,0,0.06)}
+.wf-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,0.1)}
+.wf-card-top{height:3px;background:var(--grad)}
+.wf-card-body{padding:22px}
+.wf-num{width:28px;height:28px;border-radius:8px;background:var(--teal-dim);border:1px solid rgba(0,201,167,0.2);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--teal);margin-bottom:14px}
+.wf-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:8px}
+.wf-desc{font-size:13px;color:#6B7280;line-height:1.6;margin-bottom:18px}
+.omni-prompt{background:#F7F8FC;border:1px solid rgba(0,0,0,0.07);border-radius:10px;padding:12px;margin-bottom:14px}
+.prompt-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.prompt-label-tag{font-size:10px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;color:var(--blue);display:flex;align-items:center;gap:5px}
+.copy-btn{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:10px;color:var(--muted);cursor:pointer;transition:all 0.2s ease;font-family:'DM Sans',sans-serif}
+.copy-btn:hover{border-color:var(--teal);color:var(--teal)}
+.prompt-body{font-family:'DM Mono','Courier New',monospace;font-size:11px;color:#374151;line-height:1.65;white-space:pre-wrap}
+.template-link{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--teal);text-decoration:none;font-weight:500;transition:opacity 0.2s ease}
+.template-link:hover{opacity:0.7}
+.upgrade-section{max-width:980px;margin:36px auto 0;padding:0 36px}
+.upgrade-card{background:linear-gradient(135deg,rgba(31,111,235,0.05) 0%,rgba(0,169,143,0.03) 100%);border:1px solid rgba(31,111,235,0.12);border-radius:22px;padding:36px 40px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:24px;position:relative;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.05)}
+.upgrade-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:var(--grad)}
+.upgrade-text{width:100%;text-align:center}
+.upgrade-text h3{font-family:'Syne',sans-serif;font-size:21px;font-weight:700;margin-bottom:8px}
+.upgrade-text p{font-size:14px;color:#6B7280;line-height:1.65;max-width:480px;margin:0 auto;text-align:center;text-wrap:balance}
+.upgrade-actions{display:flex;gap:16px;align-items:stretch;width:100%;max-width:440px;justify-content:center}
+.btn-upgrade{background:var(--blue);color:var(--white);font-family:'Syne',sans-serif;font-size:14px;font-weight:700;padding:13px 26px;border-radius:11px;border:none;cursor:pointer;transition:all 0.22s ease;white-space:nowrap;width:100%}
+.btn-upgrade:hover{background:#3d8fe8;box-shadow:0 8px 22px rgba(43,127,224,0.28);transform:translateY(-1px)}
+.btn-sales{background:transparent;color:#111827;font-family:'Syne',sans-serif;font-size:14px;font-weight:600;padding:13px 26px;border-radius:11px;border:1px solid rgba(0,0,0,0.12);cursor:pointer;transition:all 0.22s ease;white-space:nowrap;width:100%}
+.btn-sales:hover{border-color:rgba(0,0,0,0.2);background:rgba(0,0,0,0.03)}
+
+.fade-up{animation:fadeup 0.45s ease forwards}
+@keyframes fadeup{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:680px){
+  .tiles-grid{grid-template-columns:1fr}
+  .kit-grid{grid-template-columns:1fr}
+  .workflow-grid{grid-template-columns:1fr;padding:0 20px}
+  .upgrade-card{flex-direction:column}
+  .upgrade-actions{flex-direction:column;width:100%}
+  .topbar,.mission-wrap,.cap-bar,.question-wrap{padding-left:20px;padding-right:20px}
+  .transfer-row{gap:8px}
+  .user-ring,.agent-cube{width:48px;height:48px;font-size:14px}
+  .agent-cube{font-size:20px}
+}
+</style>
+</head>
+<body>
+<div class="glow glow-1"></div>
+<div class="glow glow-2"></div>
+<div class="glow glow-3"></div>
+
+<!-- ══ HANDOFF OVERLAY ══ -->
+<div id="handoff-overlay">
+  <div class="handoff-stage">
+
+    <div class="transfer-row">
+      <!-- User -->
+      <div class="user-avatar">
+        <div class="user-ring" id="user-ring">A</div>
+        <div class="user-label">You</div>
+      </div>
+
+      <!-- Beam -->
+      <div class="beam-wrap">
+        <div class="beam-track">
+          <div class="beam-fill" id="beam-fill"></div>
+          <div class="token-fly" id="token-fly">
+            <span id="token-icon">🏗️</span>
+          </div>
+        </div>
+        <div class="beam-label" id="beam-label">Handing off capability...</div>
+      </div>
+
+      <!-- Agent -->
+      <div class="agent-avatar">
+        <div class="agent-cube" id="agent-cube">
+          ⬡
+          <div class="agent-accept-badge" id="accept-badge">✓</div>
+        </div>
+        <div class="agent-label">Your Agent</div>
+      </div>
+    </div>
+
+    <!-- Insight -->
+    <div class="handoff-insight">
+      <div class="insight-tag">⚡ Capability accepted</div>
+      <div class="insight-typed" id="insight-typed"><span class="type-cursor"></span></div>
+    </div>
+
+    <!-- Capability stack in overlay -->
+    <div style="width:100%">
+      <div class="cap-stack-label">Agent brief so far</div>
+      <div class="cap-stack-row" id="overlay-stack"></div>
+    </div>
+
+    <div class="handoff-drain"><div class="handoff-drain-fill" id="drain-fill"></div></div>
+
+  </div>
+</div>
+
+<!-- ══ ENTRY ══ -->
+<div id="screen-entry" class="screen active">
+  <div class="topbar">
+    <div class="logo"><div class="logo-cube">⬡</div>Airtable</div>
+  </div>
+  <div class="entry-wrap fade-up">
+    <div class="entry-badge"><div class="badge-pulse"></div>AI Agent Discovery</div>
+    <h1 class="entry-title">Brief your<br><span class="grad-text">agent.</span></h1>
+    <p class="entry-sub">Agents can run complex tasks without you babysitting every step — but only when they have the right context. Tell us about your work and we'll show you what yours could own.</p>
+    <button class="btn-main" onclick="startQuiz()">Start your brief <span class="btn-arrow">→</span></button>
+    <div class="entry-stats">
+      <div class="entry-stat">⏱ 2 minutes</div>
+      <div class="stat-dot"></div>
+      <div class="entry-stat">✦ Personalized kit</div>
+      <div class="stat-dot"></div>
+      <div class="entry-stat">⚡ Omni prompts included</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ NAME ══ -->
+<div id="screen-name" class="screen">
+  <div class="topbar">
+    <div class="logo"><div class="logo-cube">⬡</div>Airtable</div>
+  </div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+    <div style="max-width:520px;width:100%;padding:40px 36px;text-align:center;" class="fade-up">
+      <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--teal);margin-bottom:16px;">Before we begin</div>
+      <h2 style="font-family:'Syne',sans-serif;font-size:clamp(28px,4vw,42px);font-weight:800;line-height:1.15;margin-bottom:12px;color:#111827;">What should we<br>call you?</h2>
+      <p style="font-size:16px;color:#6B7280;margin-bottom:36px;line-height:1.6;font-weight:300;">Your agent brief is personal. We want to make sure it feels that way.</p>
+      <div style="position:relative;margin-bottom:16px;">
+        <input
+          type="text"
+          id="name-input"
+          placeholder="First name"
+          autocomplete="given-name"
+          oninput="validateName()"
+          onkeydown="if(event.key==='Enter')submitName()"
+          style="width:100%;background:#FFFFFF;border:1.5px solid rgba(0,0,0,0.1);border-radius:14px;padding:18px 20px;font-family:'Syne',sans-serif;font-size:22px;font-weight:600;color:#111827;outline:none;text-align:center;transition:all 0.2s ease;box-shadow:0 2px 8px rgba(0,0,0,0.06);"
+          onfocus="this.style.borderColor='#00A98F';this.style.boxShadow='0 0 0 3px rgba(0,169,143,0.12),0 2px 8px rgba(0,0,0,0.06)';"
+          onblur="this.style.borderColor='rgba(0,0,0,0.1)';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.06)';"
+        >
+      </div>
+      <button class="btn-main" id="name-btn" onclick="submitName()" disabled style="opacity:0.45;cursor:not-allowed;width:100%;justify-content:center;">
+        Let's go <span class="btn-arrow">→</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ QUIZ ══ -->
+<div id="screen-quiz" class="screen">
+  <div class="topbar">
+    <div class="logo"><div class="logo-cube">⬡</div>Airtable</div>
+    <span class="topbar-label">Agent Brief</span>
+  </div>
+
+  <!-- Mission map -->
+  <div class="mission-wrap">
+    <div class="mission-map" id="mission-map">
+      <div class="map-node active" id="node-0">1</div>
+      <div class="map-track"><div class="map-track-fill" id="track-0"></div></div>
+      <div class="map-node" id="node-1">2</div>
+      <div class="map-track"><div class="map-track-fill" id="track-1"></div></div>
+      <div class="map-node" id="node-2">3</div>
+      <div class="map-track"><div class="map-track-fill" id="track-2"></div></div>
+      <div class="map-node" id="node-3">4</div>
+      <div class="map-track"><div class="map-track-fill" id="track-3"></div></div>
+      <div class="map-node" id="node-4">5</div>
+      <div class="map-track"><div class="map-track-fill" id="track-4"></div></div>
+      <div class="map-node dest" id="node-dest">🤖</div>
+    </div>
+    <div class="map-labels">
+      <div class="map-lbl active" id="lbl-0">Setup</div>
+      <div class="map-sp"></div>
+      <div class="map-lbl" id="lbl-1">Tasks</div>
+      <div class="map-sp"></div>
+      <div class="map-lbl" id="lbl-2">Blockers</div>
+      <div class="map-sp"></div>
+      <div class="map-lbl" id="lbl-3">Vision</div>
+      <div class="map-sp"></div>
+      <div class="map-lbl" id="lbl-4">Pace</div>
+      <div class="map-sp"></div>
+      <div class="map-dest-lbl">Briefed</div>
+    </div>
+  </div>
+
+  <!-- Capability bar -->
+  <div class="cap-bar" id="cap-bar">
+    <span class="cap-bar-label">Brief:</span>
+    <div class="cap-bar-chip" id="chip-0"><span class="cap-bar-icon">🏗️</span><span class="cap-bar-text">Base Setup</span></div>
+    <div class="cap-bar-chip" id="chip-1"><span class="cap-bar-icon">🔄</span><span class="cap-bar-text">Task Pattern</span></div>
+    <div class="cap-bar-chip" id="chip-2"><span class="cap-bar-icon">🔓</span><span class="cap-bar-text">Blocker Breaker</span></div>
+    <div class="cap-bar-chip" id="chip-3"><span class="cap-bar-icon">🎯</span><span class="cap-bar-text">Agent Vision</span></div>
+    <div class="cap-bar-chip" id="chip-4"><span class="cap-bar-icon">⚡</span><span class="cap-bar-text">Work Pace</span></div>
+  </div>
+
+  <div class="question-wrap" id="question-wrap"></div>
+</div>
+
+<!-- ══ LOADING ══ -->
+<div id="screen-loading" class="screen">
+  <div class="topbar"><div class="logo"><div class="logo-cube">⬡</div>Airtable</div></div>
+  <div class="loading-wrap">
+    <div class="loading-ring-wrap">
+      <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+      <div class="ring-core"></div>
+    </div>
+    <div class="loading-title">Your agent is building context...</div>
+    <div class="loading-step" id="loading-step">Mapping your workflow to AI opportunities...</div>
+    <div class="loading-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+  </div>
+</div>
+
+<!-- ══ PRE-GATE ══ -->
+<div id="screen-pregate" class="screen">
+  <div class="topbar"><div class="logo"><div class="logo-cube">⬡</div>Airtable</div></div>
+  <div class="pregate-wrap fade-up">
+    <div class="result-eyebrow">Your agent profile</div>
+    <div class="archetype-name">You're <span class="grad-text" id="pg-name">The Force Multiplier</span></div>
+    <p class="archetype-desc" id="pg-desc"></p>
+    <div class="archetype-banner" id="pg-banner">
+      <div class="banner-text"><div class="banner-quote" id="pg-quote"></div></div>
+    </div>
+    <div class="time-card">
+      <div class="time-big" id="pg-time">6.5 <span>hrs/week</span></div>
+      <div class="time-desc" id="pg-time-desc">spent on work your agent could own</div>
+      <div class="time-monthly" id="pg-monthly"></div>
+    </div>
+    <div class="kit-section-label">Your AI workflow kit includes</div>
+    <div class="kit-grid" id="pg-kit-grid"></div>
+    <button class="cta-primary" onclick="showGate()">Unlock my full kit →</button>
+  </div>
+</div>
+
+<!-- ══ GATE ══ -->
+<div id="screen-gate" class="screen">
+  <div class="topbar"><div class="logo"><div class="logo-cube">⬡</div>Airtable</div><span class="topbar-label">One last thing</span></div>
+  <div class="gate-wrap fade-up">
+    <div class="gate-q-tag">Final step</div>
+    <h2 class="gate-title">Before your kit is ready...</h2>
+    <p class="gate-sub">What's the best number to reach you? We'll send your AI workflow kit directly.</p>
+    <div class="field-group">
+      <div><label class="field-label">First Name</label><input type="text" class="field-input prefilled" value="Alex" id="g-name"></div>
+      <div><label class="field-label">Email</label><input type="email" class="field-input prefilled" value="alex@studio.co" id="g-email"></div>
+      <div><label class="field-label">Phone Number <span style="color:var(--teal)">*</span></label><input type="tel" class="field-input highlight" placeholder="(555) 000-0000" id="g-phone" oninput="validateGate()"></div>
+      <p class="privacy">🔒 We'll only use this to share relevant resources — no spam, ever.</p>
+      <button class="gate-btn" id="gate-btn" onclick="submitGate()" disabled>Build my kit →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RESULTS ══ -->
+<div id="screen-results" class="screen">
+  <div class="topbar">
+    <div class="logo"><div class="logo-cube">⬡</div>Airtable</div>
+    <span class="topbar-label" id="results-arch-label"></span>
+  </div>
+  <div class="results-hero fade-up">
+    <div class="results-eyebrow">✦ Your AI Workflow Kit</div>
+    <h2 class="results-title" id="r-title"></h2>
+    <p class="results-sub" id="r-sub"></p>
+    <div class="omni-callout"><strong>Deploy with Omni</strong> — you built this. Paste each prompt into Omni, describe the task in plain language, and your agent is live. No developer, no ticket, no waiting.</div>
+  </div>
+  <div class="workflow-grid" id="workflow-grid"></div>
+  <div class="upgrade-section">
+    <div class="upgrade-card">
+      <div class="upgrade-text">
+        <h3>Your agent has context. Now give it the credits to act on it.</h3>
+        <p>Field Agents are included on all Airtable plans — but running them at scale takes credits. The Team plan gives you 10,000 credits per user per month, enough to put your workflows on full autopilot.</p>
+      </div>
+      <div class="upgrade-actions">
+        <div class="upgrade-btn-wrap">
+          <button class="btn-upgrade">Upgrade to Team</button>
+          <span class="upgrade-btn-sub">$20/user/mo, billed annually</span>
+        </div>
+        <div class="upgrade-btn-wrap">
+          <button class="btn-sales">Talk to sales</button>
+          <span class="upgrade-btn-sub">Qualify for custom pricing</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+// DATA
+// ══════════════════════════════════════
+const CAPS = [
+  { icon:'🏗️', label:'Base Setup' },
+  { icon:'🔄', label:'Task Pattern' },
+  { icon:'🔓', label:'Blocker Breaker' },
+  { icon:'🎯', label:'Agent Vision' },
+  { icon:'⚡', label:'Work Pace' }
+];
+
+const QUESTIONS = [
+  {
+    tag:'Question 1 of 5 — Setup',
+    text:'How would you describe your current Airtable setup?',
+    answers:[
+      {text:'I built one base that does a lot of heavy lifting',archetype:'force',photo:'p-solo-desk',icon:'🏗️',insight:'Your agent knows to protect what you\'ve built and make it run itself'},
+      {text:'I have several bases across different projects',archetype:'allinone',photo:'p-layers',icon:'🗂️',insight:'Your agent knows to connect your layers'},
+      {text:'I\'m managing workflows across a whole team',archetype:'shipit',photo:'p-team',icon:'👥',insight:'Your agent knows to be the coordinator so you don\'t have to be'}
+    ]
+  },
+  {
+    tag:'Question 2 of 5 — Tasks',
+    text:'What\'s the one thing you do manually every week that you wish you didn\'t?',
+    answers:[
+      {text:'Moving information between tools or tabs',archetype:'allinone',photo:'p-tabs',icon:'🔀',timeWeight:5.0,insight:'Your agent knows to keep all your tools up to date on your behalf'},
+      {text:'Sending status updates or follow-up messages',archetype:'force',photo:'p-updates',icon:'📧',timeWeight:6.5,insight:'Your agent will keep everyone in the loop so you can focus on impact'},
+      {text:'Pulling together reports or summaries',archetype:'shipit',photo:'p-reports',icon:'📊',timeWeight:7.5,insight:'Your agent knows to find insights and opportunities so you can quickly go into action'}
+    ]
+  },
+  {
+    tag:'Question 3 of 5 — Blockers',
+    text:'Where does work go to get stuck?',
+    answers:[
+      {text:'Waiting on someone else to review or approve',archetype:'shipit',photo:'p-approval',icon:'⏳',insight:'Your agent knows to chase approvals so nothing waits'},
+      {text:'Having to re-explain context every time I hand something off',archetype:'allinone',photo:'p-handoff',icon:'🔁',insight:'Your agent knows to carry the context forward so nothing gets lost in translation'},
+      {text:'Chasing people across too many different tools',archetype:'force',photo:'p-tools',icon:'🔍',insight:'Your agent knows to be the one doing the chasing so you never have to'}
+    ]
+  },
+  {
+    tag:'Question 4 of 5 — Vision',
+    text:'When you imagine AI helping your work, what does that actually look like?',
+    answers:[
+      {text:'It handles the repetitive stuff so I can focus on what matters',archetype:'force',photo:'p-repetitive',icon:'⚡',insight:'Your agent knows to take the repeatable work off your plate permanently'},
+      {text:'It keeps everything connected so nothing falls through the cracks',archetype:'allinone',photo:'p-connected',icon:'🔗',insight:'Your agent knows to be the thread that holds everything together'},
+      {text:'It takes a task from start to finish without me babysitting it',archetype:'shipit',photo:'p-autonomous',icon:'🚀',insight:'Your agent knows to own the full task so you never have to follow up'}
+    ]
+  },
+  {
+    tag:'Question 5 of 5 — Pace',
+    text:'Which of these sounds most like your week?',
+    answers:[
+      {text:'I\'m the last person to touch everything before it goes out',archetype:null,photo:'p-bottleneck',icon:'🧱',timeMultiplier:1.4,timeBracket:6.5,insight:'Your agent knows to be your quality check so you can stop being the bottleneck'},
+      {text:'I spend more time moving information than acting on it',archetype:null,photo:'p-moving',icon:'🔄',timeMultiplier:1.0,timeBracket:5.0,insight:'Your agent knows to move the information so you can focus on the decisions'},
+      {text:'My best ideas sit waiting to become something',archetype:null,photo:'p-ideas',icon:'💡',timeMultiplier:1.2,timeBracket:7.5,insight:'Your agent knows to close the gap between thinking and shipping'}
+    ]
+  }
+];
+
+const ARCHETYPES = {
+  force:{
+    name:'The Force Multiplier',
+    desc:'You operate at a scope most teams need three people to cover. The bottleneck isn\'t your ability — it\'s having agents you can trust to run things without you watching every step.',
+    bannerClass:'banner-force',
+    quote:'"The work that used to require your constant attention — running itself, reliably, on your data."',
+    teaserCards:[
+      {title:'Auto-Brief Generator',body:'Turns any new project record into a complete creative brief using existing context in your base — automatically, every time.',locked:false},
+      {title:'Status Update Sender',body:'Monitors your base and sends personalized status updates to stakeholders the moment milestones are hit.',locked:true,lockDesc:'Automated outbound communication'},
+      {title:'Weekly Summary Builder',body:'Aggregates everything that moved across your base and generates a plain-English summary every Friday.',locked:true,lockDesc:'Scheduled intelligence reports'},
+      {title:'Decision Log Agent',body:'Captures and summarizes key decisions made across your base so your institutional memory never lives in one person\'s head.',locked:true,lockDesc:'Institutional memory, automated'},
+      {title:'Follow-up Tracker',body:'Monitors open threads and outstanding items and sends reminders before anything slips — without you needing to remember.',locked:true,lockDesc:'Zero-drop follow-up system'}
+    ],
+    resultsTitle:'Your Force Multiplier Kit',
+    resultsSub:'Five AI workflows built for someone running at your pace. Each one hands a piece of your week to a Field Agent — permanently.',
+    workflows:[
+      {title:'Auto-Brief Generator',desc:'Takes any new project record and drafts a complete creative brief using existing context in your base. Stop starting from a blank page.',prompt:`You are a project brief writer working inside Airtable.
+
+Given this project record: {PROJECT_DATA}
+
+Write a complete brief including:
+- Objective (1 sentence)
+- Target audience
+- Key deliverables (bullet list)
+- Timeline with milestones
+- Success metrics
+
+Use context from linked records where available. Be specific and actionable. Max 300 words.`,template:'Project Management Template'},
+      {title:'Status Update Sender',desc:'Monitors record changes and automatically sends personalized status emails to stakeholders when milestones hit.',prompt:`You are writing a professional status update inside Airtable.
+
+Project: {PROJECT_NAME}
+Status changed to: {NEW_STATUS}
+Key updates this week: {CHANGES}
+Stakeholder: {STAKEHOLDER_NAME}
+
+Write a 3-sentence update email. Tone: clear, confident, brief. No filler. End with one clear next step.`,template:'Stakeholder Communication Template'},
+      {title:'Weekly Summary Builder',desc:'Every Friday, aggregates all activity across your base and generates a plain-English summary of what moved, what\'s stuck, and what needs you.',prompt:`You are a weekly ops summarizer working in Airtable.
+
+Review these records from the past 7 days: {RECORDS}
+
+Write a summary covering:
+1. What was completed (bullet list)
+2. What's in progress and % done
+3. What needs attention or is blocked
+
+Keep it under 200 words. Use bullet points. Lead with wins.`,template:'Operations Dashboard Template'},
+      {title:'Decision Log Agent',desc:'Automatically captures and summarizes key decisions recorded across your base — so institutional memory never lives in one person\'s head.',prompt:`You are a decision logger inside Airtable.
+
+Given this record update: {RECORD_DATA}
+
+Extract and log:
+- Decision made (1 sentence)
+- Context that led to it
+- Who decided
+- Date
+- Impact on related records
+
+Format as a structured decision entry. Flag if the decision contradicts any previous entries.`,template:'Decision Tracking Template'},
+      {title:'Follow-up Tracker',desc:'Monitors open threads across your base and sends reminders before anything slips — without you needing to remember.',prompt:`You are a follow-up agent inside Airtable.
+
+Scan these open records: {OPEN_RECORDS}
+
+Identify items that:
+- Haven't been updated in 3+ days
+- Have passed their due date
+- Are blocked and unacknowledged
+
+For each: draft a 1-sentence follow-up to the assigned owner. Tone: friendly, direct.`,template:'Follow-up Workflow Template'}
+    ]
+  },
+  allinone:{
+    name:'The All-in-One',
+    desc:'Your data lives everywhere — and that means your agents can\'t reason across it. Airtable gives them one structured surface to work from, so nothing gets lost in translation.',
+    bannerClass:'banner-allinone',
+    quote:'"Everything connected. Nothing re-explained. One source of truth."',
+    teaserCards:[
+      {title:'Cross-Tool Sync Agent',body:'Normalizes incoming data from all your connected tools into one clean, current Airtable record automatically.',locked:false},
+      {title:'Handoff Context Packager',body:'Packages full context when records change hands so the next person has everything they need without a single re-explanation.',locked:true,lockDesc:'Zero-loss handoffs between people'},
+      {title:'Weekly Summary Builder',body:'Aggregates everything that moved across your base and generates a plain-English summary every Friday.',locked:true,lockDesc:'Scheduled intelligence reports'},
+      {title:'Relationship Web Monitor',body:'Tracks connections between records and flags when linked data goes stale or creates contradictions downstream.',locked:true,lockDesc:'Living relationship intelligence'},
+      {title:'Duplicate Resolver',body:'Detects conflicting or duplicated records across your bases and surfaces them for review before they cause downstream confusion.',locked:true,lockDesc:'Automatic data integrity checks'}
+    ],
+    resultsTitle:'Your All-in-One Kit',
+    resultsSub:'Five AI workflows that connect your tools, preserve your context, and make sure nothing falls through the cracks again.',
+    workflows:[
+      {title:'Cross-Tool Sync Agent',desc:'Monitors incoming data from connected tools and normalizes it into a single Airtable record — so your base is always the source of truth.',prompt:`You are a data normalization agent inside Airtable.
+
+Incoming data from {SOURCE_TOOL}: {RAW_DATA}
+
+Map this to the following Airtable fields: {FIELD_LIST}
+
+Rules:
+- Prefer the most recent value when there's a conflict
+- Flag any fields that cannot be mapped
+- Mark confidence level (High / Medium / Low) for each mapped field
+- Summarize what was synced in 1 sentence`,template:'Connected Operations Template'},
+      {title:'Handoff Context Packager',desc:'When a record changes owner, generates a full context summary so the next person has everything — no re-explanation required.',prompt:`You are a handoff agent inside Airtable.
+
+Record handed off from {FROM_PERSON} to {TO_PERSON}.
+Record summary: {RECORD_DATA}
+Related records: {LINKED_DATA}
+
+Write a handoff note covering:
+- Current status (1 sentence)
+- Key decisions made so far
+- Open questions needing answers
+- Immediate next step
+
+Max 150 words. Tone: direct and useful, not formal.`,template:'Project Handoff Template'},
+      {title:'Weekly Summary Builder',desc:'Every Friday, aggregates all activity across your base and generates a plain-English summary of what moved, what\'s stuck, and what needs you.',prompt:`You are a weekly ops summarizer working in Airtable.
+
+Review these records from the past 7 days: {RECORDS}
+
+Write a summary covering:
+1. What was completed (bullet list)
+2. What's in progress and % done
+3. What needs attention or is blocked
+
+Keep it under 200 words. Use bullet points. Lead with wins.`,template:'Operations Dashboard Template'},
+      {title:'Relationship Web Monitor',desc:'Tracks connections between your records and flags when linked data goes stale, creates orphaned records, or contradicts related entries.',prompt:`You are a relationship integrity agent inside Airtable.
+
+Scan these linked records: {LINKED_RECORDS}
+
+Check for:
+- Records linked to deleted or archived parents
+- Fields referencing outdated data (older than {THRESHOLD} days)
+- Contradictions between linked fields
+
+Output: flagged relationships with a 1-sentence explanation and suggested fix for each.`,template:'Data Integrity Template'},
+      {title:'Duplicate Resolver',desc:'Detects conflicting or duplicated records across your bases and surfaces them for human review before they create downstream confusion.',prompt:`You are a duplicate detection agent inside Airtable.
+
+Scan these records: {RECORDS}
+
+Identify potential duplicates based on:
+- Matching name fields (within 85% similarity)
+- Same email or phone number
+- Overlapping date ranges for the same entity
+
+For each match: show both records side by side, explain why they may be duplicates, and suggest which to keep. Flag confidence as High / Medium / Low.`,template:'Data Deduplication Template'}
+    ]
+  },
+  shipit:{
+    name:'The Ship-It Builder',
+    desc:'You have the ideas and the system. AI closes the gap between thinking and done — so your work reaches the world at the speed you actually think.',
+    bannerClass:'banner-shipit',
+    quote:'"Your ideas ship faster when agents handle the execution — and show their work before anything goes out."',
+    teaserCards:[
+      {title:'Launch Checklist Runner',body:'Runs your full pre-launch checklist automatically when a project hits ready and flags any blockers before you ship.',locked:false},
+      {title:'Approval Accelerator',body:'Drafts and routes complete approval requests with full context automatically so reviews never stall in someone\'s inbox.',locked:true,lockDesc:'Zero-delay approval workflows'},
+      {title:'Weekly Summary Builder',body:'Aggregates everything that moved across your base and generates a plain-English summary every Friday.',locked:true,lockDesc:'Scheduled intelligence reports'},
+      {title:'Brief-to-Concept Agent',body:'Turns a one-line brief into three distinct, structured concept directions ready for review and ready to build from.',locked:true,lockDesc:'Instant ideation at scale'},
+      {title:'Shipping Velocity Tracker',body:'Monitors time from idea to shipped across your projects and surfaces exactly where time is getting lost.',locked:true,lockDesc:'Velocity intelligence for teams'}
+    ],
+    resultsTitle:'Your Ship-It Builder Kit',
+    resultsSub:'Five AI workflows that compress the distance between idea and live. Your agent handles the tail so you never lose momentum.',
+    workflows:[
+      {title:'Launch Checklist Runner',desc:'When a project hits Ready to Ship, your agent runs through a pre-defined checklist, flags blockers, and won\'t let anything slip pre-launch.',prompt:`You are a launch readiness agent inside Airtable.
+
+Project marked Ready to Ship: {PROJECT_DATA}
+
+Run through this checklist: {CHECKLIST}
+
+For each item: mark PASS, FAIL, or NEEDS REVIEW.
+For FAIL or NEEDS REVIEW: explain what's missing in one sentence and tag the responsible person from {TEAM_DATA}.
+
+Output as a structured list. End with a launch confidence score out of 10.`,template:'Launch Management Template'},
+      {title:'Approval Accelerator',desc:'Drafts a complete approval request with full context and routes it to the right person — so reviews don\'t die in someone\'s inbox.',prompt:`You are an approval request writer inside Airtable.
+
+Requesting approval for: {PROJECT_NAME}
+Approver: {APPROVER}
+Context: {BACKGROUND}
+Decision needed: {DECISION}
+Deadline: {DATE}
+
+Write a direct approval request under 100 words:
+- One-sentence context
+- The exact decision being requested
+- Consequence of delay
+- Clear yes/no ask
+
+No fluff. The approver should decide in under 30 seconds.`,template:'Approval Workflow Template'},
+      {title:'Weekly Summary Builder',desc:'Every Friday, aggregates all activity across your base and generates a plain-English summary of what moved, what\'s stuck, and what needs you.',prompt:`You are a weekly ops summarizer working in Airtable.
+
+Review these records from the past 7 days: {RECORDS}
+
+Write a summary covering:
+1. What was completed (bullet list)
+2. What's in progress and % done
+3. What needs attention or is blocked
+
+Keep it under 200 words. Use bullet points. Lead with wins.`,template:'Operations Dashboard Template'},
+      {title:'Brief-to-Concept Agent',desc:'Takes a one-line project brief and expands it into three distinct concept directions — structured, ready to review, and ready to build from.',prompt:`You are a concept development agent inside Airtable.
+
+One-line brief: {BRIEF}
+Audience: {AUDIENCE}
+Constraints: {CONSTRAINTS}
+
+Generate 3 distinct concept directions. For each:
+- Concept name (2-3 words)
+- Core idea (2 sentences)
+- Key differentiator from the other two
+- Suggested first execution step
+
+Concepts should be meaningfully different — not variations on the same theme.`,template:'Creative Concept Template'},
+      {title:'Shipping Velocity Tracker',desc:'Monitors time-from-idea-to-shipped across your projects and surfaces patterns — so you know exactly where time is getting lost.',prompt:`You are a velocity analysis agent inside Airtable.
+
+Analyze these completed projects: {PROJECT_HISTORY}
+
+For each project calculate:
+- Total time from creation to shipped
+- Time spent in each stage
+- Stages that took longer than average
+
+Then identify:
+- The single biggest recurring bottleneck
+- The stage with the most variance
+- One process change that would compress the most time
+
+Output as a structured report with a recommendations section.`,template:'Velocity Tracking Template'}
+    ]
+  }
+};
+
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+const state = {
+  currentQ:0, answers:[], archetype:null,
+  timeWeight:2.0, timeMultiplier:1.0, timeSavings:0,
+  completedCaps:[], userName:'', userInitial:'A'
+};
+
+// ══════════════════════════════════════
+// SCREEN
+// ══════════════════════════════════════
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ══════════════════════════════════════
+// MISSION MAP
+// ══════════════════════════════════════
+function updateMap(activeIdx){
+  for(let i=0;i<=4;i++){
+    const node=document.getElementById('node-'+i);
+    const lbl=document.getElementById('lbl-'+i);
+    if(i<activeIdx){
+      node.className='map-node done'; node.textContent='✓';
+      lbl.className='map-lbl done';
+    } else if(i===activeIdx){
+      node.className='map-node active'; node.textContent=i+1;
+      lbl.className='map-lbl active';
+    } else {
+      node.className='map-node'; node.textContent=i+1;
+      lbl.className='map-lbl';
+    }
+  }
+  for(let i=0;i<5;i++){
+    document.getElementById('track-'+i).style.width=i<activeIdx?'100%':'0%';
+  }
+}
+
+function animateNodeComplete(idx, callback){
+  const node=document.getElementById('node-'+idx);
+  const track=document.getElementById('track-'+idx);
+
+  // Spin and lock
+  node.classList.add('spinning');
+  setTimeout(()=>{
+    node.classList.remove('spinning','active');
+    node.classList.add('done');
+    node.textContent='✓';
+    document.getElementById('lbl-'+idx).classList.add('done');
+    document.getElementById('lbl-'+idx).classList.remove('active');
+
+    // Draw track to next
+    track.style.width='100%';
+
+    setTimeout(()=>{
+      // Pulse next node
+      if(idx<4){
+        const next=document.getElementById('node-'+(idx+1));
+        next.classList.add('active','pulsing');
+        next.textContent=idx+2;
+        document.getElementById('lbl-'+(idx+1)).classList.add('active');
+        setTimeout(()=>{
+          next.classList.remove('pulsing');
+          callback();
+        }, 600);
+      } else {
+        // All done
+        document.getElementById('node-dest').classList.add('done');
+        callback();
+      }
+    }, 700);
+  }, 500);
+}
+
+// ══════════════════════════════════════
+// CAP BAR
+// ══════════════════════════════════════
+function revealCapChip(idx){
+  setTimeout(()=>{
+    document.getElementById('chip-'+idx).classList.add('visible');
+  }, 200);
+}
+
+// ══════════════════════════════════════
+// HANDOFF ANIMATION
+// ══════════════════════════════════════
+let typeInterval=null;
+
+function showHandoff(qIdx, insightText, callback){
+  const cap=CAPS[qIdx];
+  const overlay=document.getElementById('handoff-overlay');
+
+  // Set token
+  document.getElementById('token-icon').textContent=cap.icon;
+
+  // Reset beam and token
+  const beamFill=document.getElementById('beam-fill');
+  const tokenFly=document.getElementById('token-fly');
+  const agentCube=document.getElementById('agent-cube');
+  const acceptBadge=document.getElementById('accept-badge');
+  const userRing=document.getElementById('user-ring');
+
+  beamFill.style.width='0%';
+  beamFill.style.transition='none';
+  tokenFly.style.transition='none';
+  tokenFly.classList.remove('flying');
+  agentCube.classList.remove('receiving','accepted');
+  acceptBadge.style.opacity='0';
+
+  // Reset drain
+  const drain=document.getElementById('drain-fill');
+  drain.style.animation='none';
+  drain.offsetHeight;
+
+  // Build overlay stack
+  buildOverlayStack(qIdx);
+
+  // Show overlay
+  overlay.classList.add('show');
+
+  // Clear insight text
+  const typedEl=document.getElementById('insight-typed');
+  typedEl.innerHTML='<span class="type-cursor"></span>';
+
+  // Phase 1: User sends (300ms delay)
+  setTimeout(()=>{
+    userRing.classList.add('sending');
+    setTimeout(()=>userRing.classList.remove('sending'), 500);
+
+    // Phase 2: Beam fills + token flies (600ms)
+    setTimeout(()=>{
+      beamFill.style.transition='width 0.7s cubic-bezier(0.4,0,0.2,1)';
+      beamFill.style.width='100%';
+      tokenFly.style.transition='left 0.7s cubic-bezier(0.4,0,0.2,1)';
+      tokenFly.classList.add('flying');
+
+      // Phase 3: Agent receives (at 700ms)
+      setTimeout(()=>{
+        agentCube.classList.add('receiving');
+        setTimeout(()=>{
+          agentCube.classList.add('accepted');
+
+          // Phase 4: Type insight
+          setTimeout(()=>{
+            typeInsight(insightText, typedEl, ()=>{
+              // All done — start drain, close after
+              drain.style.animation='drain 2.0s linear forwards';
+              setTimeout(()=>{
+                overlay.classList.remove('show');
+                setTimeout(callback, 300);
+              }, 2200);
+            });
+          }, 200);
+        }, 400);
+      }, 650);
+    }, 300);
+  }, 200);
+}
+
+function typeInsight(text, el, callback){
+  if(typeInterval) clearInterval(typeInterval);
+  let i=0;
+  el.innerHTML='<span class="type-cursor"></span>';
+  typeInterval=setInterval(()=>{
+    if(i<text.length){
+      el.innerHTML=text.slice(0,i+1)+'<span class="type-cursor"></span>';
+      i++;
+    } else {
+      clearInterval(typeInterval);
+      setTimeout(callback, 300);
+    }
+  }, 28);
+}
+
+function buildOverlayStack(currentIdx){
+  const stackEl=document.getElementById('overlay-stack');
+  stackEl.innerHTML='';
+  for(let i=0;i<5;i++){
+    const cap=CAPS[i];
+    const chip=document.createElement('div');
+    chip.className='cap-chip'+(i<=currentIdx?' active':state.completedCaps.includes(i)?' visible':'');
+    chip.innerHTML=`<span class="cap-chip-icon">${cap.icon}</span><span style="font-size:11px">${cap.label}</span>`;
+    stackEl.appendChild(chip);
+    if(i<=currentIdx){
+      setTimeout(()=>chip.classList.add('visible'),i*80);
+    }
+  }
+}
+
+// ══════════════════════════════════════
+// QUIZ
+// ══════════════════════════════════════
+function startQuiz(){
+  showScreen('screen-name');
+  setTimeout(()=>document.getElementById('name-input').focus(), 300);
+}
+
+function validateName(){
+  const val = document.getElementById('name-input').value.trim();
+  const btn = document.getElementById('name-btn');
+  btn.disabled = val.length < 1;
+  btn.style.opacity = val.length < 1 ? '0.45' : '1';
+  btn.style.cursor = val.length < 1 ? 'not-allowed' : 'pointer';
+}
+
+function submitName(){
+  const name = document.getElementById('name-input').value.trim();
+  if(!name) return;
+  state.userName = name;
+  state.userInitial = name.charAt(0).toUpperCase();
+  // Pre-fill gate name field
+  document.getElementById('g-name').value = name;
+  // Update all user rings
+  document.querySelectorAll('.user-ring').forEach(r => r.textContent = state.userInitial);
+  showScreen('screen-quiz');
+  updateMap(0);
+  renderQuestion(0);
+}
+
+function renderQuestion(idx){
+  const q=QUESTIONS[idx];
+  const wrap=document.getElementById('question-wrap');
+  wrap.innerHTML=`
+    <div class="q-tag fade-up">${q.tag}</div>
+    <div class="q-text fade-up" style="animation-delay:0.06s">${q.text}</div>
+    <div class="tiles-grid fade-up" style="animation-delay:0.12s">
+      ${q.answers.map((a,i)=>`
+        <div class="tile" onclick="selectAnswer(${idx},${i})">
+          <div class="tile-img ${a.photo}"><div class="tile-icon">${a.icon}</div></div>
+          <div class="tile-body">
+            <div class="tile-text">${a.text}</div>
+            <div class="tile-check"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function selectAnswer(qIdx, aIdx){
+  const answer=QUESTIONS[qIdx].answers[aIdx];
+
+  document.querySelectorAll('.tile').forEach(t=>t.classList.remove('selected'));
+  document.querySelectorAll('.tile')[aIdx].classList.add('selected');
+
+  state.answers[qIdx]={archetype:answer.archetype,aIdx};
+  if(qIdx===1&&answer.timeWeight) state.timeWeight=answer.timeWeight;
+  if(qIdx===4){ state.timeMultiplier=answer.timeMultiplier||1.0; }
+
+  setTimeout(()=>{
+    // Pre-render next question during handoff so it's ready when overlay closes
+    if(qIdx<4){
+      state.currentQ=qIdx+1;
+      updateMap(state.currentQ);
+      renderQuestion(state.currentQ);
+    }
+
+    showHandoff(qIdx, answer.insight, ()=>{
+      // Handoff closed — animate map node and reveal cap chip
+      state.completedCaps.push(qIdx);
+      revealCapChip(qIdx);
+
+      if(qIdx<4){
+        animateNodeComplete(qIdx, ()=>{
+          // Question already rendered — nothing more to do
+        });
+      } else {
+        animateNodeComplete(qIdx, ()=>{
+          showLoading();
+        });
+      }
+    });
+  }, 250);
+}
+
+// ══════════════════════════════════════
+// LOADING
+// ══════════════════════════════════════
+function showLoading(){
+  showScreen('screen-loading');
+  const steps=['Mapping your workflow to AI opportunities...','Training your agent on how you work...','Finalizing your kit...'];
+  let i=0;
+  const el=document.getElementById('loading-step');
+  const iv=setInterval(()=>{ i++; if(i<steps.length) el.textContent=steps[i]; else clearInterval(iv); },900);
+  setTimeout(()=>{ computeResult(); showPregate(); },3000);
+}
+
+// ══════════════════════════════════════
+// SCORING
+// ══════════════════════════════════════
+function computeResult(){
+  const votes={force:0,allinone:0,shipit:0};
+  for(let i=0;i<4;i++){ if(state.answers[i]?.archetype) votes[state.answers[i].archetype]++; }
+  const max=Math.max(...Object.values(votes));
+  const tied=Object.keys(votes).filter(k=>votes[k]===max);
+  state.archetype=tied.length===1?tied[0]:(state.answers[3]?.archetype||'force');
+  const bracket=state.answers[4]?QUESTIONS[4].answers[state.answers[4].aIdx].timeBracket:5.0;
+  state.timeSavings=Math.min(Math.round(state.timeWeight*state.timeMultiplier*10)/10,bracket);
+}
+
+// ══════════════════════════════════════
+// PRE-GATE
+// ══════════════════════════════════════
+function showPregate(){
+  const arch=ARCHETYPES[state.archetype];
+  document.getElementById('pg-name').textContent=arch.name;
+  document.getElementById('pg-desc').textContent=arch.desc;
+  document.getElementById('pg-quote').textContent=arch.quote;
+  const banner=document.getElementById('pg-banner');
+  banner.className='archetype-banner '+arch.bannerClass;
+  document.getElementById('pg-time').innerHTML=state.timeSavings+' <span>hrs/week</span>';
+  const taskDesc=state.answers[1]?.aIdx===0?'moving information between tools':state.answers[1]?.aIdx===1?'sending manual status updates':'pulling together reports and summaries';
+  document.getElementById('pg-time-desc').textContent=`spent ${taskDesc} — work your agent could own`;
+  const monthly=Math.round(state.timeSavings*4.3*10)/10;
+  document.getElementById('pg-monthly').innerHTML=`That's <strong>${monthly} hours a month</strong> you're spending on work that shouldn't need you.`;
+
+  document.getElementById('pg-kit-grid').innerHTML=arch.teaserCards.map(card=>`
+    <div class="kit-preview-card ${card.locked?'':'unlocked'}">
+      <div class="kit-card-tag ${card.locked?'closed':'open'}">${card.locked?'🔒 Locked':'⚡ Preview'}</div>
+      <div class="kit-card-title">${card.title}</div>
+      <div class="kit-card-body">${card.body}</div>
+      ${card.locked?`<div class="kit-unlock-label">🔒 Unlock to access — ${card.lockDesc}</div>`:''}
+    </div>
+  `).join('');
+
+  showScreen('screen-pregate');
+}
+
+// ══════════════════════════════════════
+// GATE
+// ══════════════════════════════════════
+function showGate(){ showScreen('screen-gate'); }
+function validateGate(){ document.getElementById('gate-btn').disabled=document.getElementById('g-phone').value.trim().length<7; }
+function submitGate(){
+  console.log('Gate:',{name:document.getElementById('g-name').value,email:document.getElementById('g-email').value,phone:document.getElementById('g-phone').value,archetype:state.archetype});
+  showResults();
+}
+
+// ══════════════════════════════════════
+// RESULTS
+// ══════════════════════════════════════
+function showResults(){
+  const arch=ARCHETYPES[state.archetype];
+  document.getElementById('r-title').textContent=arch.resultsTitle;
+  document.getElementById('r-sub').textContent=arch.resultsSub;
+  document.getElementById('results-arch-label').textContent=arch.name;
+
+  document.getElementById('workflow-grid').innerHTML=arch.workflows.map((w,i)=>`
+    <div class="wf-card fade-up" style="animation-delay:${i*0.08}s">
+      <div class="wf-card-top"></div>
+      <div class="wf-card-body">
+        <div class="wf-num">${i+1}</div>
+        <div class="wf-title">${w.title}</div>
+        <div class="wf-desc">${w.desc}</div>
+        <div class="omni-prompt">
+          <div class="prompt-header">
+            <div class="prompt-label-tag">⚡ Omni prompt — paste directly into Omni</div>
+            <button class="copy-btn" onclick="copyPrompt(${i},event)">Copy</button>
+          </div>
+          <div class="prompt-body" id="prompt-${i}">${w.prompt}</div>
+        </div>
+        <a class="template-link" href="#" onclick="return false;">↗ Open ${w.template} in Airtable</a>
+      </div>
+    </div>
+  `).join('');
+
+  showScreen('screen-results');
+}
+
+function copyPrompt(i,e){
+  navigator.clipboard.writeText(document.getElementById('prompt-'+i).textContent).catch(()=>{});
+  const btn=e.target; btn.textContent='Copied!'; btn.style.color='var(--teal)'; btn.style.borderColor='var(--teal)';
+  setTimeout(()=>{ btn.textContent='Copy'; btn.style.color=''; btn.style.borderColor=''; },1600);
+}
+</script>
+</body>
+</html>
